@@ -3,6 +3,7 @@ package com.ceiba.oauthapi.infraestructure.adapters.oauth;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
@@ -21,6 +22,9 @@ import java.util.Arrays;
 public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
 
     @Autowired
+    private Environment environment;
+
+    @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
     @Autowired
@@ -37,8 +41,8 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
 
     @Override
     public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
-        clients.inMemory().withClient("frontend")  //cliente
-                .secret(passwordEncoder.encode("1234")) //contraseña codificada
+        clients.inMemory().withClient(environment.getProperty("config.security.oauth.client.id"))  //cliente
+                .secret(passwordEncoder.encode(environment.getProperty("config.security.oauth.client.secret"))) //contraseña codificada
                 .scopes("read", "write")  //permisos
                 .authorizedGrantTypes("password", "refresh_token") //para hacer autorizacion por login y qu el token se renueve
                 .accessTokenValiditySeconds(120) //tiempo duracion token
@@ -63,7 +67,7 @@ public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdap
     @Bean
     public JwtAccessTokenConverter accessTokenConverter() {
         JwtAccessTokenConverter tokenConverter = new JwtAccessTokenConverter();
-        tokenConverter.setSigningKey("codigo_secreto");
+        tokenConverter.setSigningKey(environment.getProperty("config.security.oauth.jwt.key"));
         return tokenConverter;
     }
 }

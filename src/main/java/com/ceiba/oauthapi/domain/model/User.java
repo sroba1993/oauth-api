@@ -14,6 +14,8 @@ public class User {
     private String email;
     private List<Role> roles;
 
+    private Integer attempts;
+
     public Long getId() {
         return id;
     }
@@ -76,5 +78,13 @@ public class User {
 
     public void setRoles(List<Role> roles) {
         this.roles = roles;
+    }
+
+    public Integer getAttempts() {
+        return attempts;
+    }
+
+    public void setAttempts(Integer attempts) {
+        this.attempts = attempts;
     }
 }

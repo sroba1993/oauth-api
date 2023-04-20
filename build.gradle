@@ -25,8 +25,11 @@ dependencies {
 	implementation 'org.springframework.security:spring-security-jwt:1.1.1.RELEASE'
 	implementation('org.springframework.cloud:spring-cloud-starter-bootstrap')
 	implementation 'org.springframework.cloud:spring-cloud-starter-config'
+	implementation('org.projectlombok:lombok:1.18.24')
+	annotationProcessor 'org.projectlombok:lombok:1.18.24'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
 }
 
 dependencyManagement {

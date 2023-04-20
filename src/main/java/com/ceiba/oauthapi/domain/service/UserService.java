@@ -3,6 +3,7 @@ package com.ceiba.oauthapi.domain.service;
 import com.ceiba.oauthapi.domain.gateway.IUserService;
 import com.ceiba.oauthapi.domain.model.User;
 import com.ceiba.oauthapi.infraestructure.adapters.clients.UserFeignClient;
+import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,23 +27,29 @@ public class UserService implements IUserService, UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = client.findByUsername(username);
-        if(user == null) {
-            log.error("Error en el login, no existe el usuario: " + username);
-            throw new UsernameNotFoundException("Error en el login, no existe el usuario: " + username);
+        try {
+            User user = client.findByUsername(username);
+            List<GrantedAuthority> authorities = user.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority(role.getName()))
+                    .peek(authority -> log.info("Role: " + authority.getAuthority()))
+                    .collect(Collectors.toList());
+            log.info("User authenticated: " + username);
+            log.info("User: " + user.getUsername() + "  " + user.getPassword() + " " + user.getEnabled() + " " + authorities);
+            return new org.springframework.security.core.userdetails.User(user.getUsername(),user.getPassword(),
+                    user.getEnabled(), true, true, true, authorities);
+        } catch (FeignException e) {
+            log.error("Login error, user does not exist: " + username);
+            throw new UsernameNotFoundException("Login error, user does not exist: " + username);
         }
-        List<GrantedAuthority> authorithies = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .peek(authority -> log.info("Role: " + authority.getAuthority()))
-                .collect(Collectors.toList());
-        log.info("Usuario autenticado: " + username);
-        log.info("Usuario: " + user.getUsername() + "  " + user.getPassword() + " " + user.getEnabled() + " " + authorithies);
-        return new org.springframework.security.core.userdetails.User(user.getUsername(),user.getPassword(),
-                user.getEnabled(), true, true, true, authorithies);
     }
 
     @Override
     public User findByUsername(String username) {
         return client.findByUsername(username);
+    }
+
+    @Override
+    public User update(User user, Long id) {
+        return client.update(user, id);
     }
 }

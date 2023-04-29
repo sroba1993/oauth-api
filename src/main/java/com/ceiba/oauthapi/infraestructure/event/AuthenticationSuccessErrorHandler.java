@@ -5,6 +5,7 @@ import com.ceiba.oauthapi.domain.model.User;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.security.authentication.AuthenticationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -18,6 +19,9 @@ public class AuthenticationSuccessErrorHandler implements AuthenticationEventPub
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private Tracer tracer;
 
     @Override
     public void publishAuthenticationSuccess(Authentication authentication) {
@@ -36,7 +40,9 @@ public class AuthenticationSuccessErrorHandler implements AuthenticationEventPub
 
     @Override
     public void publishAuthenticationFailure(AuthenticationException exception, Authentication authentication) {
-        log.info("Login error: " + exception.getMessage());
+        StringBuilder messageErrors = new StringBuilder();
+        messageErrors.append("Login error: ").append(exception.getMessage());
+        log.info(String.format("Login error: %s", exception.getMessage()));
         try {
             User user = userService.findByUsername(authentication.getName());
             if(user.getAttempts() == null){
@@ -44,13 +50,18 @@ public class AuthenticationSuccessErrorHandler implements AuthenticationEventPub
             }
             user.setAttempts(user.getAttempts() + 1);
             log.error(String.format("Number of attempts made: %s", user.getAttempts()));
+            messageErrors.append(String.format("Number of attempts made: %s", user.getAttempts()));
 
             if(user.getAttempts() >= 3) {
                 user.setEnabled(false);
-                log.error(String.format("User %s was disabled for the maximum number of attempts allowed: ",
-                        authentication.getName()));
+                String userEnabledMessage = String.format(
+                        "User %s was disabled for the maximum number of attempts allowed: ",
+                        authentication.getName());
+                log.error(userEnabledMessage);
+                messageErrors.append(userEnabledMessage);
             }
             userService.update(user, user.getId());
+            tracer.currentSpan().tag("message.error: ", messageErrors.toString());
         } catch (FeignException e) {
             log.error(String.format("User %s does not exist in system: ", authentication.getName()));
         }

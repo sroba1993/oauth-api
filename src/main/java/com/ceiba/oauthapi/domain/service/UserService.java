@@ -7,6 +7,7 @@ import feign.FeignException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,6 +26,9 @@ public class UserService implements IUserService, UserDetailsService {
     @Autowired
     private UserFeignClient client;
 
+    @Autowired
+    private Tracer tracer;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         try {
@@ -38,7 +42,9 @@ public class UserService implements IUserService, UserDetailsService {
             return new org.springframework.security.core.userdetails.User(user.getUsername(),user.getPassword(),
                     user.getEnabled(), true, true, true, authorities);
         } catch (FeignException e) {
-            log.error("Login error, user does not exist: " + username);
+            String messageError = "Login error, user does not exist: " + username;
+            log.error(messageError);
+            tracer.currentSpan().tag("message.error", messageError.concat(" : " + e.getMessage()));
             throw new UsernameNotFoundException("Login error, user does not exist: " + username);
         }
     }
